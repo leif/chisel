@@ -101,9 +101,13 @@ class Chisel(object):
 
     def sync( self, remote, stateFile = None ):
         "this part isn't tested yet"
+        count, new = 0,0
         for dirPath, filename in remote.walkFiles():
+            count += 1
             if not self.has( filename, 0 ):
+                new += 1
                 self.put( remote._fs.getcontents( "%s/%s" % (dirPath, filename) ) )
+        print "Saw %s files; copied %s that are new" % (count, new)
 
 if __name__ == "__main__":
     
@@ -119,9 +123,11 @@ if __name__ == "__main__":
             if cmd == 'put':
                 chisel.put( sys.stdin.read(), *map(int, sys.argv[3:]) )
             elif cmd == 'ls':
-                print "\n".join( chisel.walkFiles( *map(int, sys.argv[3:]) ) ),
+                print "\n".join( "%s/%s" % (a,b) for a,b in chisel.walkFiles( *map(int, sys.argv[3:]) ) ),
             elif cmd == 'cat':
                 print "".join( chisel.get( *map(int, sys.argv[3:]) ) ),
+            elif cmd == 'sync':
+                chisel.sync( Chisel( opener.opendir( sys.argv[3] ) ), *map(int, sys.argv[4:]) )
             else:
                 print "unknown command %s" % (cmd,)
 
