@@ -40,7 +40,7 @@ class ScrollHandler(HTTPAPI):
         self.scroll = models.Scroll(pyfs)
 
 class ScrollListHandler(ScrollHandler):
-    def get(self):
+    def get(self, scroll_id):
         limit = None
         try:
             start = int(self.get_argument('start'))
@@ -54,13 +54,14 @@ class ScrollListHandler(ScrollHandler):
         self.write(items)
 
 class ScrollPolicyHandler(ScrollHandler):
-    def get(self):
+    def get(self, scroll_id):
         self.write(self.scroll.policy)
 
 
 hash_regexp = '[0-9a-f]{40}'
 
-spec = [
+notaryAPI = web.Application([
+
     (r'/item/(' + hash_regexp + ')', ItemRWHandler),
     (r'/item', ItemListHandler),
     
@@ -68,7 +69,4 @@ spec = [
     (r'/scroll/(' + hash_regexp + ')', ScrollListHandler),
 
     (r'/subscribe', SubscribeHandler),
-
-]
-
-
+])
