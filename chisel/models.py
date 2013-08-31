@@ -6,16 +6,27 @@ from chisel import errors as e
 import hashlib
 
 HASH = lambda s:hashlib.sha1(s).digest()
+HASH_LENGTH = 20
 
 class Pool(object):
     """
-    A scroll is an append-only unordered list of unique items.
+    Simple content-addressable data store.
     """
     def __init__(self, pyfs):
         self._pyfs = pyfs
 
-    def put(self, obj):
-        pass
+    def _getDir( self, hashBytes ):
+        assert len(hashBytes) == HASH_LENGTH
+        hexString = hashBytes.encode('hex')
+        dirPath = "%s/%s" % (hexString[0:2], hexString[2:4])
+        return self._pyfs.makeopendir( dirPath, recursive=True )
+
+    def put(self, data):
+        hashBytes = HASH(data)
+        self._getDir(hashBytes).setcontents(, data))
+
+    def get(self, hashBytes):
+        self._getDir(hashBytes).getcontents(hashBytes)
 
 class Policy(dict):
     pass
@@ -75,7 +86,7 @@ class Scroll(object):
         else:
             raise e.ObjectAlreadyInPool
 
-class Set(object):
+class ChiselSet(object):
     def __init__(self, pool, scroll):
         self.pool = pool
         self.scroll = scroll
