@@ -17,6 +17,14 @@ class HTTPAPI(web.RequestHandler):
         else:
             super(HTTPAPI, self).write(chunk)
 
+    def write_error(self, status_code, exception=None, **kw):
+        self.set_status(status_code)
+        error_message = 'generic-error'
+        if exception.log_message:
+            error_message = exception.log_message
+        if exception:
+            self.write({'error': error_message})
+
 class SubscribeHandler(websocket.WebSocketHandler):
     def publish_update(self, update):
         pass
@@ -69,4 +77,5 @@ notaryAPI = web.Application([
     (r'/scroll/(' + hash_regexp + ')', ScrollListHandler),
 
     (r'/subscribe', SubscribeHandler),
+    (r'/.*', HTTPAPI),
 ])
