@@ -24,8 +24,9 @@ class Scroll(object):
     """
     Ordered set of item hashes.
     """
-    def __init__(self, pyfs):
+    def __init__(self, pyfs, scroll_id):
         self._pyfs = pyfs
+        self.id = scroll_id
         self._data_set = set()
         self._data_list = []
         self.policy = {
@@ -34,6 +35,21 @@ class Scroll(object):
             'valid-keys': [],
             'go-hard': True,
         }
+
+    def save(self):
+        scroll_content = ""
+        for item_hash in self._data_list:
+            scroll_content += item_hash
+        self._pyfs.setcontents("%s.scroll" % self.id, scroll_content)
+
+    def load(self):
+        scroll_content = self._pyfs.getcontents("%s.scroll" % self.id)
+        value_size = self.policy['value-size']
+        assert len(scroll_content) % value_size == 0
+        for i in range(len(scroll_content)/value_size):
+            item_hash = scroll_content[value_size*i:value_size*(i+1)]
+            self._data_set.add(item_hash)
+            self._data_list.append(item_hash)
 
     def __iter__(self):
         for item_hash in self._data_list:
@@ -47,7 +63,7 @@ class Scroll(object):
 
     def has(self, item_hash):
         return item_hash in self._data_set
-
+    
     def add(self, item_hash):
         """
         Adds an entry to the scroll if it isn't already present.
