@@ -5,7 +5,7 @@ ScrollFs - stores files by hash, maintains ordered log of writes
 from chisel import errors as e
 import hashlib
 
-HASH = lambda s:hashlib.sha1(s).hexdigest()
+HASH = lambda s:hashlib.sha1(s).digest()
 
 class Pool(object):
     """
@@ -17,6 +17,9 @@ class Pool(object):
     def put(self, obj):
         pass
 
+class Policy(dict):
+    pass
+
 class Scroll(object):
     """
     Ordered set of item hashes.
@@ -25,6 +28,12 @@ class Scroll(object):
         self._pyfs = pyfs
         self._data_set = set()
         self._data_list = []
+        self.policy = {
+            'value-size': 20,
+            'signed': True,
+            'valid-keys': [],
+            'go-hard': True,
+        }
 
     def __iter__(self):
         for item_hash in self._data_list:
@@ -44,6 +53,7 @@ class Scroll(object):
         Adds an entry to the scroll if it isn't already present.
         """
         if item_hash not in self._data_set:
+            assert self.policy['go-hard']
             self._data_list.append(item_hash)
             self._data_set.add(item_hash)
         else:
@@ -65,16 +75,20 @@ class Set(object):
         item_hash = HASH(item)
         return self.scroll.has(item_hash)
 
-class Directory(Scroll):
-    pass
-
-class Trustee(object):
+class Notary(object):
     """
-    A trustee maintains one or more scrolls, keeping them up-to-date with
+    A notary maintains one or more scrolls, keeping them up-to-date with
     corresponding scrolls maintained by other trustees.
     """
-    pass
+    def __init__(self, publisher):
+        self.load_scrolls()
+        self.publisher = publisher
 
-class Directory(Scroll):
-    pass
+    def receive_update(self, update):
+        pass
 
+    def publish_update(self, update):
+        self.publisher.publish_update(update)
+
+    def load_scrolls(self):
+        self.scrolls = []
