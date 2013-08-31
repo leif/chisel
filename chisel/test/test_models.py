@@ -64,3 +64,18 @@ class TestScroll(unittest.TestCase):
         scroll.save()
         contents = pyfs.getcontents(scroll_id + '.scroll')
         self.assertEqual(contents, ''.join(items))
+
+    def test_slice(self):
+        pyfs = opener.opendir(settings.config['fs_path'])
+        scroll_id = sha1_hexdigest
+        scroll = models.Scroll(pyfs, scroll_id)
+        
+        items = []
+        for i in range(10):
+            item_hash = bytes_hash_int(i)
+            scroll.add(item_hash)
+            items.append(item_hash)
+        
+        four, five = scroll.slice(4, 2)
+        self.assertEqual(four, bytes_hash_int(4))
+        self.assertEqual(five, bytes_hash_int(5))
