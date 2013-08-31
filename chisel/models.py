@@ -2,11 +2,9 @@
 AsymFs   - asymmetrically encrypted files
 ScrollFs - stores files by hash, maintains ordered log of writes
 """
+from chisel import settings
 from chisel import errors as e
 import hashlib
-
-HASH = lambda s:hashlib.sha1(s).digest()
-HASH_LENGTH = 20
 
 class Pool(object):
     """
@@ -15,18 +13,19 @@ class Pool(object):
     def __init__(self, pyfs):
         self._pyfs = pyfs
 
-    def _getDir( self, hashBytes ):
-        assert len(hashBytes) == HASH_LENGTH
-        hexString = hashBytes.encode('hex')
-        dirPath = "%s/%s" % (hexString[0:2], hexString[2:4])
-        return self._pyfs.makeopendir( dirPath, recursive=True )
+    def _get_dir(self, hash_bytes):
+        assert len(hash_bytes) == settings.HASH_LENGTH
+        hex_string = hash_bytes.encode('hex')
+        dir_path = "%s/%s" % (hex_string[0:2], hex_string[2:4])
+        return self._pyfs.makeopendir(dir_path, recursive=True)
 
     def put(self, data):
-        hashBytes = HASH(data)
-        self._getDir(hashBytes).setcontents(, data))
+        hash_bytes = settings.HASH(data)
+        self._get_dir(hash_bytes).setcontents(hash_bytes.encode('hex'), data)
+        return hash_bytes
 
-    def get(self, hashBytes):
-        self._getDir(hashBytes).getcontents(hashBytes)
+    def get(self, hash_bytes):
+        return self._get_dir(hash_bytes).getcontents(hash_bytes.encode('hex'))
 
 class Policy(dict):
     pass
@@ -99,7 +98,7 @@ class ChiselSet(object):
         pass
 
     def has(self, item):
-        item_hash = HASH(item)
+        item_hash = settings.HASH(item)
         return self.scroll.has(item_hash)
 
 class Notary(object):

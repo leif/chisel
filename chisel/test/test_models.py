@@ -79,3 +79,13 @@ class TestScroll(unittest.TestCase):
         four, five = scroll.slice(4, 2)
         self.assertEqual(four, bytes_hash_int(4))
         self.assertEqual(five, bytes_hash_int(5))
+
+class TestPool(unittest.TestCase):
+    def test_put_get_pool(self):
+        my_data = "B"*20
+        scroll_id = sha1_hexdigest
+        pyfs = opener.opendir(settings.config['fs_path'])
+        pool = models.Pool(pyfs)
+        hash_bytes = pool.put(my_data)
+        self.assertEqual(pool.get(hash_bytes), my_data)
+
