@@ -16,15 +16,16 @@ class TestChiselSet(unittest.TestCase):
         my_data = "B"*20
         pyfs = opener.opendir(settings.config['fs_path'])
         scroll_id = sha1_hexdigest
+
+        chissel_set_id = 'spam'
+
+        fingerprint = notary.Notary.generate(pyfs)
         
-        s = scroll.Scroll(pyfs, scroll_id)
-        p = pool.Pool(pyfs)
-        
-        chisel_set = notary.ChiselSet(p, s)
+        chisel_set = notary.ChiselSet(pyfs, chissel_set_id, fingerprint)
         hash_bytes = chisel_set.add(my_data)
 
-        self.assertEqual(p.get(hash_bytes), my_data)
-        self.assertTrue(s.has(hash_bytes))
+        self.assertEqual(chisel_set.pool.get(hash_bytes), my_data)
+        self.assertTrue(chisel_set.scroll.has(hash_bytes))
 
         self.assertTrue(chisel_set.has(my_data))
 

@@ -1,4 +1,4 @@
-from chisel import settings, notary
+from chisel import settings, crypto
 from chisel import errors as e
 
 class Policy(dict):
@@ -25,8 +25,12 @@ class Scroll(object):
         self._data_list = []
         self.state = scroll_id
         # XXX this is a blocking call
-        self._fh = self._pyfs.open("%s.scroll" % scroll_id, 'a+')
-    
+        self._fh = self._pyfs.open(self.scroll_path, 'a+')
+
+    @property 
+    def scroll_path(self):
+        return "%s.scroll" % self.id
+
     @property
     def serial_number(self):
         return len(self._data_list)
@@ -68,23 +72,33 @@ class Scroll(object):
 
             self.state = settings.HASH(self.state + item_hash)
 
-class LocalScroll(Scroll):
-    def sign_update(self, update):
-        pass
-
-class RemoteScroll(Scroll, notary.KeyStore):
+class CryptoScroll(Scroll, crypto.KeyStore):
     def __init__(self, pyfs, scroll_id, fingerprint):
         self.fingerprint = fingerprint
-        super(RemoteScroll, self).__init__(pyfs, scroll_id)
+        super(CryptoScroll, self).__init__(pyfs, scroll_id)
 
+    @property
+    def scroll_path(self):
+        self._pyfs.makeopendir(self.fingerprint, recursive=True)
+        return "%s/%s.scroll" % (self.fingerprint, self.id)
+
+class LocalScroll(CryptoScroll):
+    def sign_update(self, update):
+        signing_key = self.get_signing_key(self.fingerprint)
+
+        signed_update = signing_key.sign(update)
+        return signed_update
+
+class RemoteScroll(CryptoScroll):
     def verify_update(self, signed_update):
-        pkey, _ = self.get_keypair(self.fingerprint)
+        verify_key = self.get_verify_key(self.fingerprint)
 
-        update = pkey.verify(signed_update)
+        update = verify_key.verify(signed_update)
 
         item_hash = update[:20]
         state = update[20:]
         next_state = settings.HASH(self.state + item_hash)
         if state != next_state:
             raise e.InconsistentState
+
         return settings.HASH(update)

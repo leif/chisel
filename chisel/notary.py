@@ -1,14 +1,16 @@
-import nacl.signing
-import nacl.encoding
-import nacl.secret
-
-from chisel import settings
+from chisel import settings, crypto
+from chisel.scroll import LocalScroll
+from chisel.pool import Pool
 from chisel import errors as e
 
 class ChiselSet(object):
-    def __init__(self, pool, scroll):
-        self.pool = pool
-        self.scroll = scroll
+    def __init__(self, pyfs, chisel_set_id, fingerprint):
+        self.scroll = LocalScroll(pyfs, chisel_set_id, fingerprint)
+        self.pool = Pool(pyfs)
+        self.remote_scrolls = []
+    
+    def add_remote_scroll(self, remote_scroll):
+        self.remote_scrolls.append(remote_scroll)
 
     def __iter__(self):
         for item_hash in self.scroll:
@@ -24,27 +26,7 @@ class ChiselSet(object):
         item_hash = settings.HASH(item)
         return self.scroll.has(item_hash)
 
-class KeyStore(object):
-    def get_keypair(self, fingerprint):
-        skey = None
-        pkey = None
-        try:
-            data = self._pyfs.getcontents("%s.skey" % self.fingerprint)
-            skey = nacl.signing.SigningKey(data)
-        except Exception as exc:
-            # XXX make this exception handling more tight.
-            pass
-
-        try:
-            data = self._pyfs.getcontents("%s.pkey" % self.fingerprint)
-            pkey = nacl.signing.VerifyKey(data)
-        except Exception as exc:
-            # XXX make this exception handling more tight.
-            pass
- 
-        return pkey, skey
-
-class Notary(KeyStore):
+class Notary(crypto.KeyStore):
     """
     A notary maintains one or more scrolls, keeping them up-to-date with
     corresponding scrolls maintained by other notaries.
@@ -54,34 +36,40 @@ class Notary(KeyStore):
         self.publisher = publisher
         self.fingerprint = fingerprint
 
-        self.load_scrolls()
         self.load_keys()
-    
+   
+    def create_chisel_set(self, chisel_set_id):
+        self.chisel_set = ChiselSet(self._pyfs, chisel_set_id, self.fingerprint)
+
+    def add(self, item):
+        pass
+
     @classmethod
     def generate(cls, pyfs):
-        skey = nacl.signing.SigningKey.generate()
-        key_fingerprint = skey.verify_key.encode(nacl.encoding.HexEncoder)
-        pyfs.setcontents("%s.skey" % key_fingerprint,
-                         skey.encode(nacl.encoding.RawEncoder))
-        pyfs.setcontents("%s.pkey" % key_fingerprint,
-                         skey.verify_key.encode(nacl.encoding.RawEncoder))
+        signing_key = crypto.generate_signing_key()
+        key_fingerprint = signing_key.verify_key.encode(crypto.HexEncoder)
+        pyfs.setcontents(cls.skey % key_fingerprint,
+                         signing_key.encode(crypto.RawEncoder))
+        pyfs.setcontents(cls.vkey % key_fingerprint,
+                         signing_key.verify_key.encode(crypto.RawEncoder))
         return key_fingerprint
 
     def load_keys(self):
-        self.public_key, self.signing_key = self.get_keypair(self.fingerprint)
+        self.verify_key = self.get_verify_key(self.fingerprint)
+        self.signing_key = self.get_signing_key(self.fingerprint)
 
-    def load_scrolls(self):
-        self.scrolls = []
-
-    def invalid_update(self, scroll, update):
+    def invalid_update(self, scroll, update, exception):
         raise e.StreissandException
 
     def receive_update(self, scroll, update):
         try:
             item_hash = scroll.verify_update(update)
             self.local_scroll.add(item_hash)
-        except e.InvalidUpdateSignature:
-            self.invalid_update(scroll, update)
+        except Exception as exception:
+            self.invalid_update(scroll, update, exception)
 
-    def publish_update(self, update):
-        self.publisher.publish_update(update)
+    def publish_update(self, item_hash):
+        update = item_hash + self.local_scroll.state
+
+        signed_update = self.local_scoll.sign_update(update)
+        self.publisher.publish_update(signed_update)
