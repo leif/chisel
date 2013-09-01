@@ -109,3 +109,19 @@ class TestChiselSet(unittest.TestCase):
 
         self.assertTrue(chisel_set.has(my_data))
 
+class TestNotary(unittest.TestCase):
+    def test_generate(self):
+        pyfs = opener.opendir(settings.config['fs_path'])
+        fingerprint = models.Notary.generate(pyfs)
+        publisher = None
+        notary = models.Notary(publisher, pyfs, fingerprint)
+
+    def test_sign(self):
+        pyfs = opener.opendir(settings.config['fs_path'])
+        fingerprint = models.Notary.generate(pyfs)
+        publisher = None
+        notary = models.Notary(publisher, pyfs, fingerprint)
+
+        signed_message = notary.signing_key.sign('aaaaaaaaa')
+        verify_key = notary.signing_key.verify_key
+        verify_key.verify(signed_message)

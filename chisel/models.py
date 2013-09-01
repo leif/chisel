@@ -2,6 +2,10 @@
 AsymFs   - asymmetrically encrypted files
 ScrollFs - stores files by hash, maintains ordered log of writes
 """
+import nacl.signing
+import nacl.encoding
+import nacl.secret
+
 from chisel import settings
 from chisel import errors as e
 
@@ -115,15 +119,31 @@ class Notary(object):
     A notary maintains one or more scrolls, keeping them up-to-date with
     corresponding scrolls maintained by other trustees.
     """
-    def __init__(self, publisher):
-        self.load_scrolls()
+    def __init__(self, publisher, pyfs, fingerprint):
+        self._pyfs = pyfs
         self.publisher = publisher
+        self.fingerprint = fingerprint
+
+        self.load_scrolls()
+        self.load_keys()
+    
+    @classmethod
+    def generate(cls, pyfs):
+        skey = nacl.signing.SigningKey.generate()
+        key_fingerprint = skey.verify_key.encode(nacl.encoding.HexEncoder)
+        pyfs.setcontents("%s.skey" % key_fingerprint,
+                         skey.encode(nacl.encoding.RawEncoder))
+        return key_fingerprint
+
+    def load_keys(self):
+        skey = self._pyfs.getcontents("%s.skey" % self.fingerprint)
+        self.signing_key = nacl.signing.SigningKey(skey)
+
+    def load_scrolls(self):
+        self.scrolls = []
 
     def receive_update(self, update):
         pass
 
     def publish_update(self, update):
         self.publisher.publish_update(update)
-
-    def load_scrolls(self):
-        self.scrolls = []
