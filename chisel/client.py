@@ -1,3 +1,5 @@
+import json
+
 from zope.interface import implementer
 
 from twisted.internet import reactor
@@ -37,6 +39,13 @@ class HTTPClient(object):
             from txsocksx.http import SOCKS5Agent
             torEndpoint = TCP4ClientEndpoint(reactor, socks_host, int(socks_port))
             self.agent = SOCKS5Agent(reactor, proxyEndpoint=torEndpoint)
+    
+    def jrequest(self, method, url, jdata=None):
+        if jdata:
+            jdata = json.dumps(jdata)
+        d = self.request(method, url, jdata)
+        d.addCallback(json.loads)
+        return d
 
     def request(self, method, url, data=None):
         bodyProducer = None
@@ -46,6 +55,17 @@ class HTTPClient(object):
         d = self.agent.request(method, url, bodyProducer=bodyProducer)
         d.addCallback(client.readBody)
         return d
+    
+    # XXX I bet there is a smarter way to do this.
+    def jget(self, url):
+        return self.jrequest('GET', url)
+
+    def jpost(self, url, jdata=None):
+        return self.jrequest('POST', url, data)
+
+    def jput(self, url, jdata=None):
+        return self.jrequest('PUT', url, data)
+    # /XXX
 
     def get(self, url):
         return self.request('GET', url)
