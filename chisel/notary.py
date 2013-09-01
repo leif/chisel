@@ -22,8 +22,8 @@ class ChiselSet(object):
         self.scroll.add(item_hash)
         return item_hash
 
-    def has(self, item):
-        item_hash = settings.HASH(item)
+    def has(self, item_hash):
+        #item_hash = settings.HASH(item)
         return self.scroll.has(item_hash)
 
 class Notary(crypto.KeyStore):
@@ -42,7 +42,8 @@ class Notary(crypto.KeyStore):
         self.chisel_set = ChiselSet(self._pyfs, chisel_set_id, self.fingerprint)
 
     def add(self, item):
-        pass
+        item_hash = self.chisel_set.add(item)
+        self.publish_update(item_hash)
 
     @classmethod
     def generate(cls, pyfs):
@@ -64,12 +65,16 @@ class Notary(crypto.KeyStore):
     def receive_update(self, scroll, update):
         try:
             item_hash = scroll.verify_update(update)
-            self.local_scroll.add(item_hash)
+            if not self.chisel_set.has(item_hash):
+                d = scroll.fetch_item(item_hash)
+                @d.addCallback
+                def cb(result):
+                    self.add(item)
         except Exception as exception:
             self.invalid_update(scroll, update, exception)
 
     def publish_update(self, item_hash):
-        update = item_hash + self.local_scroll.state
+        update = item_hash + self.chisel_set.scroll.state
 
-        signed_update = self.local_scoll.sign_update(update)
+        signed_update = self.chisel_set.scroll.sign_update(update)
         self.publisher.publish_update(signed_update)

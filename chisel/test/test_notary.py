@@ -27,7 +27,7 @@ class TestChiselSet(unittest.TestCase):
         self.assertEqual(chisel_set.pool.get(hash_bytes), my_data)
         self.assertTrue(chisel_set.scroll.has(hash_bytes))
 
-        self.assertTrue(chisel_set.has(my_data))
+        self.assertTrue(chisel_set.has(hash_bytes))
 
 class TestNotary(unittest.TestCase):
     def test_generate(self):

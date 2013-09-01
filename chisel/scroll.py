@@ -1,3 +1,5 @@
+from twisted.internet import defer
+
 from chisel import settings, crypto
 from chisel import errors as e
 
@@ -75,11 +77,11 @@ class Scroll(object):
 class SignedScroll(Scroll, crypto.KeyStore):
     def __init__(self, pyfs, scroll_id, fingerprint):
         self.fingerprint = fingerprint
-        super(CryptoScroll, self).__init__(pyfs, scroll_id)
+        super(SignedScroll, self).__init__(pyfs, scroll_id)
 
     @property
     def scroll_path(self):
-        self._pyfs.makeopendir(self.fingerprint, recursive=True)
+        self._pyfs.makeopendir(self.id, recursive=True)
         return "%s/%s.scroll" % (self.id, self.fingerprint)
 
 class LocalScroll(SignedScroll):
@@ -90,6 +92,9 @@ class LocalScroll(SignedScroll):
         return signed_update
 
 class RemoteScroll(SignedScroll):
+    def fetch_item(self, item_hash):
+        return defer.succeed('AAAA')
+
     def verify_update(self, signed_update):
         verify_key = self.get_verify_key(self.fingerprint)
 
