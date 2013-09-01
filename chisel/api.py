@@ -2,9 +2,18 @@ import types
 
 from cyclone import web, websocket, escape
 
-from chisel import models
+from fs.opener import opener
+
+from chisel import log, settings
+from chisel import scroll, notary
 
 class HTTPAPI(web.RequestHandler):
+    notary = None
+
+    def initialize(self):
+        if not self.notary:
+            log.warn("No notary is present.")
+
     def write(self, chunk):
         """
         This is a monkey patch to RequestHandler to allow us to serialize also
@@ -44,10 +53,10 @@ class ItemRWHandler(HTTPAPI):
 
 class ScrollHandler(HTTPAPI):
     def initialize(self):
-        pyfs = None
-        self.scroll = models.Scroll(pyfs)
+        super(HTTPAPI, self).initialize(self)
+        self.scroll = scroll.Scroll(self.notary.pyfs)
 
-class ScrollListHandler(ScrollHandler):
+class ScrollReadHandler(ScrollHandler):
     def get(self, scroll_id):
         limit = None
         try:
@@ -61,21 +70,61 @@ class ScrollListHandler(ScrollHandler):
 
         self.write(items)
 
+class ScrollListHandler(ScrollHandler):
+    def get(self):
+        scroll_list = []
+        for cs_id, chisel_set in self.notary.chisel_sets.items():
+            for peer_id, remote_scroll in chisel_set.peers.items():
+                scroll_list.append({
+                    'id': remote_scroll.id,
+                    'peer_id': peer_id,
+                    'state': remote_scroll.state.encode('hex'),
+                    'policy': remote_scroll.policy,
+                    # XXX should this flag be present or is it implicit in the peer_id?
+                    'local': False
+                })
+
+            scroll_list.append({
+                'id': chisel_set.scroll.id,
+                'peer_id': self.notary.fingerprint,
+                'state': chisel_set.scroll.state.encode('hex'),
+                'policy': chisel_set.scroll.policy,
+                'local': True
+            })
+        self.write(scroll_list)
+
+    def post(self):
+        """
+        This shall create a new scroll based on the given request.
+
+        XXX do we want to expose an API for creating new scrolls, or should we
+        just allow the creation of new chisel sets? 
+        ~ A.
+        """
+        pass
+
 class ScrollPolicyHandler(ScrollHandler):
     def get(self, scroll_id):
         self.write(self.scroll.policy)
 
-
 hash_regexp = '[0-9a-f]{40}'
 
-notaryAPI = web.Application([
+def loadNotary():
+    pyfs = opener.opendir(settings.config['fs_path'])
+    chissel_set_id = 'spam'
+    notary_fingerprint = notary.Notary.generate(pyfs)
+    HTTPAPI.notary = notary.Notary(SubscribeHandler, pyfs, notary_fingerprint)
 
-    (r'/item/(' + hash_regexp + ')', ItemRWHandler),
-    (r'/item', ItemListHandler),
-    
-    (r'/scroll/(' + hash_regexp + ')/policy', ScrollPolicyHandler),
-    (r'/scroll/(' + hash_regexp + ')', ScrollListHandler),
+    notaryAPI = web.Application([
 
-    (r'/subscribe', SubscribeHandler),
-    (r'/.*', HTTPAPI),
-])
+        (r'/chisel/scroll/(' + hash_regexp + ')/policy', ScrollPolicyHandler),
+        (r'/chisel/scroll/(' + hash_regexp + ')', ScrollReadHandler),
+        (r'/chisel/scroll', ScrollListHandler),
+
+        (r'/chisel/item/(' + hash_regexp + ')', ItemRWHandler),
+        (r'/chisel/item', ItemListHandler),
+ 
+        (r'/chisel/subscribe', SubscribeHandler),
+        (r'/.*', HTTPAPI),
+    ])
+    return notaryAPI

@@ -58,6 +58,6 @@ class HTTPClient(object):
 class PoolClient(HTTPClient):
     pass
 
-class ScrollClient(object):
+class ScrollClient(HTTPClient):
     pass
 

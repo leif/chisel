@@ -7,11 +7,11 @@ class KeyStore(object):
     vkey = "%s.vkey"
 
     def get_signing_key(self, fingerprint):
-        data = self._pyfs.getcontents(self.skey % fingerprint)
+        data = self.pyfs.getcontents(self.skey % fingerprint)
         return nacl.signing.SigningKey(data)
 
     def get_verify_key(self, fingerprint):
-        data = self._pyfs.getcontents(self.vkey % fingerprint)
+        data = self.pyfs.getcontents(self.vkey % fingerprint)
         return nacl.signing.VerifyKey(data)
 
 def generate_signing_key():

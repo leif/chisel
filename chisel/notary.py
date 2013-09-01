@@ -5,13 +5,18 @@ from chisel import errors as e
 
 class ChiselSet(object):
     def __init__(self, pyfs, chisel_set_id, fingerprint):
-        self.scroll = LocalScroll(pyfs, chisel_set_id, fingerprint)
-        self.pool = Pool(pyfs)
+        self.id = chisel_set_id
+        self.pyfs = pyfs
+        self.fingerprint = fingerprint
+
         self.peers = {}
         self._pending_item_requests = {}
+
+        self.scroll = LocalScroll(pyfs, chisel_set_id, fingerprint)
+        self.pool = Pool(pyfs)
     
     def add_peer(self, peer_id):
-        self.remote_scrolls.append(remote_scroll)
+        self.peers[peer_id] = RemoteScroll(self.pyfs, self.id, peer_id)
 
     def __iter__(self):
         for item_hash in self.scroll:
@@ -34,15 +39,16 @@ class Notary(crypto.KeyStore):
     corresponding scrolls maintained by other notaries.
     """
     def __init__(self, publisher, pyfs, fingerprint):
-        self._pyfs = pyfs
+        self.pyfs = pyfs
         self.publisher = publisher
         self.fingerprint = fingerprint
         self.remote_pools = {}
+        self.chisel_sets = {}
 
         self.load_keys()
      
     def create_chisel_set(self, chisel_set_id):
-        self.chisel_set[chisel_set_id] = ChiselSet(self._pyfs, chisel_set_id, self.fingerprint)
+        self.chisel_sets[chisel_set_id] = ChiselSet(self.pyfs, chisel_set_id, self.fingerprint)
 
     def add_remote_pool(self, peer_id, pool):
         self.remote_pools[peer_id] = pool
@@ -86,10 +92,10 @@ class Notary(crypto.KeyStore):
     def failed_fetch(self, item_hash, notary_fingerprint):
         print "Failed to fetch %s from %s" % (item_hash, notary_fingerprint)
 
-    def receive_update(self, scroll, update):
+    def receive_update(self, chisel_set_id, scroll, update):
         try:
             item_hash = scroll.verify_update(update)
-            if not self.chisel_set.has(item_hash):
+            if not self.chisel_sets[chisel_set_id].has(item_hash):
                 d = self.fetch_item(item_hash, scroll.fingerprint)
                 @d.addCallback
                 def cb(item):
@@ -98,8 +104,8 @@ class Notary(crypto.KeyStore):
         except Exception as exception:
             self.invalid_update(scroll, update, exception)
 
-    def publish_update(self, item_hash):
-        update = item_hash + self.chisel_set.scroll.state
+    def publish_update(self, chisel_set_id, item_hash):
+        update = item_hash + self.chisel_sets[chisel_set_id].scroll.state
 
-        signed_update = self.chisel_set.scroll.sign_update(update)
+        signed_update = self.chisel_sets[chisel_set_id].scroll.sign_update(update)
         self.publisher.publish_update(signed_update)

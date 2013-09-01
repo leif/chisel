@@ -21,13 +21,13 @@ class Scroll(object):
             'valid-keys': [],
             'go-hard': True,
         }
-        self._pyfs = pyfs
+        self.pyfs = pyfs
         self.id = scroll_id
         self._data_set = set()
         self._data_list = []
         self.state = scroll_id
         # XXX this is a blocking call
-        self._fh = self._pyfs.open(self.scroll_path, 'a+')
+        self._fh = self.pyfs.open(self.scroll_path, 'a+')
 
     @property 
     def scroll_path(self):
@@ -38,7 +38,7 @@ class Scroll(object):
         return len(self._data_list)
 
     def load(self):
-        scroll_content = self._pyfs.getcontents("%s.scroll" % self.id)
+        scroll_content = self.pyfs.getcontents("%s.scroll" % self.id)
         value_size = self.policy['value-size']
         assert len(scroll_content) % value_size == 0
         for i in range(len(scroll_content)/value_size):
@@ -82,7 +82,7 @@ class SignedScroll(Scroll, crypto.KeyStore):
 
     @property
     def scroll_path(self):
-        self._pyfs.makeopendir(self.id, recursive=True)
+        self.pyfs.makeopendir(self.id, recursive=True)
         return "%s/%s.scroll" % (self.id, self.fingerprint)
 
 class LocalScroll(SignedScroll):

@@ -6,13 +6,13 @@ class Pool(object):
     Simple content-addressable data store.
     """
     def __init__(self, pyfs):
-        self._pyfs = pyfs
+        self.pyfs = pyfs
 
     def _get_dir(self, item_hash):
         assert len(item_hash) == settings.HASH_LENGTH
         hex_string = item_hash.encode('hex')
         dir_path = "%s/%s" % (hex_string[0:2], hex_string[2:4])
-        return self._pyfs.makeopendir(dir_path, recursive=True)
+        return self.pyfs.makeopendir(dir_path, recursive=True)
 
     def put(self, item):
         item_hash = settings.HASH(item)
