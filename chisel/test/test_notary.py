@@ -36,11 +36,12 @@ class TestNotary(unittest.TestCase):
         n = notary.Notary(publisher, pyfs, fingerprint)
 
     def test_sign(self):
+        my_message = 'Do it Like La La La!'
         pyfs = opener.opendir(settings.config['fs_path'])
         fingerprint = notary.Notary.generate(pyfs)
         publisher = None
         n = notary.Notary(publisher, pyfs, fingerprint)
 
-        signed_message = n.signing_key.sign('aaaaaaaaa')
+        signed_message = n.signing_key.sign(my_message)
         verify_key = n.signing_key.verify_key
-        verify_key.verify(signed_message)
+        self.assertEqual(verify_key.verify(signed_message), my_message)

@@ -1,4 +1,4 @@
-from chisel import settings
+from chisel import settings, notary
 from chisel import errors as e
 
 class Policy(dict):
@@ -67,13 +67,24 @@ class Scroll(object):
             self._data_list.append(item_hash)
 
             self.state = settings.HASH(self.state + item_hash)
-        else:
-            raise e.ObjectAlreadyInPool
 
 class LocalScroll(Scroll):
-    pass
+    def sign_update(self, update):
+        pass
 
-class RemoteScroll(Scroll):
-    pass
+class RemoteScroll(Scroll, notary.KeyStore):
+    def __init__(self, pyfs, scroll_id, fingerprint):
+        self.fingerprint = fingerprint
+        super(RemoteScroll, self).__init__(pyfs, scroll_id)
 
+    def verify_update(self, signed_update):
+        pkey, _ = self.get_keypair(self.fingerprint)
 
+        update = pkey.verify(signed_update)
+
+        item_hash = update[:20]
+        state = update[20:]
+        next_state = settings.HASH(self.state + item_hash)
+        if state != next_state:
+            raise e.InconsistentState
+        return settings.HASH(update)

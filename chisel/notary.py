@@ -24,7 +24,27 @@ class ChiselSet(object):
         item_hash = settings.HASH(item)
         return self.scroll.has(item_hash)
 
-class Notary(object):
+class KeyStore(object):
+    def get_keypair(self, fingerprint):
+        skey = None
+        pkey = None
+        try:
+            data = self._pyfs.getcontents("%s.skey" % self.fingerprint)
+            skey = nacl.signing.SigningKey(data)
+        except Exception as exc:
+            # XXX make this exception handling more tight.
+            pass
+
+        try:
+            data = self._pyfs.getcontents("%s.pkey" % self.fingerprint)
+            pkey = nacl.signing.VerifyKey(data)
+        except Exception as exc:
+            # XXX make this exception handling more tight.
+            pass
+ 
+        return pkey, skey
+
+class Notary(KeyStore):
     """
     A notary maintains one or more scrolls, keeping them up-to-date with
     corresponding scrolls maintained by other notaries.
@@ -43,17 +63,25 @@ class Notary(object):
         key_fingerprint = skey.verify_key.encode(nacl.encoding.HexEncoder)
         pyfs.setcontents("%s.skey" % key_fingerprint,
                          skey.encode(nacl.encoding.RawEncoder))
+        pyfs.setcontents("%s.pkey" % key_fingerprint,
+                         skey.verify_key.encode(nacl.encoding.RawEncoder))
         return key_fingerprint
 
     def load_keys(self):
-        skey = self._pyfs.getcontents("%s.skey" % self.fingerprint)
-        self.signing_key = nacl.signing.SigningKey(skey)
+        self.public_key, self.signing_key = self.get_keypair(self.fingerprint)
 
     def load_scrolls(self):
         self.scrolls = []
 
-    def receive_update(self, update):
-        pass
+    def invalid_update(self, scroll, update):
+        raise e.StreissandException
+
+    def receive_update(self, scroll, update):
+        try:
+            item_hash = scroll.verify_update(update)
+            self.local_scroll.add(item_hash)
+        except e.InvalidUpdateSignature:
+            self.invalid_update(scroll, update)
 
     def publish_update(self, update):
         self.publisher.publish_update(update)

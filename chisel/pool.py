@@ -22,4 +22,5 @@ class Pool(object):
     def get(self, hash_bytes):
         return self._get_dir(hash_bytes).getcontents(hash_bytes.encode('hex'))
 
-
+class RemotePool(Pool):
+    pass
