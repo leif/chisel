@@ -48,7 +48,9 @@ class Notary(crypto.KeyStore):
         self.load_keys()
      
     def create_chisel_set(self, chisel_set_id):
-        self.chisel_sets[chisel_set_id] = ChiselSet(self.pyfs, chisel_set_id, self.fingerprint)
+        chisel_set = ChiselSet(self.pyfs, chisel_set_id, self.fingerprint)
+        self.chisel_sets[chisel_set_id] = chisel_set
+        return chisel_set
 
     def add_remote_pool(self, peer_id, pool):
         self.remote_pools[peer_id] = pool
@@ -67,10 +69,11 @@ class Notary(crypto.KeyStore):
             return self.fetch_item(item_hash, peer_id)
         return d
 
-    def add(self, item):
-        item_hash = self.chisel_set.add(item)
+    def add(self, chisel_set_id, item):
+        item_hash = self.chisel_sets[chisel_set_id].add(item)
         if item_hash:
-            self.publish_update(item_hash)
+            self.publish_update(chisel_set_id, item_hash)
+        return item_hash
 
     @classmethod
     def generate(cls, pyfs):

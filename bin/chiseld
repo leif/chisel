@@ -12,5 +12,5 @@ from chisel.api import loadNotary
 
 print "Starting notary HTTP API on http://127.0.0.1:2997"
 log.startLogging(sys.stdout)
-reactor.listenTCP(2997, loadNotary(), interface="127.0.0.1")
+reactor.listenTCP(2997, notaryAPI(loadNotary()), interface="127.0.0.1")
 reactor.run()

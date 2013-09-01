@@ -45,7 +45,8 @@ class HTTPAPI(web.RequestHandler):
         raise e.ResourceNotFound
 
 class SubscribeHandler(websocket.WebSocketHandler):
-    def publish_update(self, update):
+    @classmethod
+    def publish_update(cls, update):
         pass
 
 class ItemListHandler(HTTPAPI):
@@ -62,21 +63,21 @@ class ItemRWHandler(HTTPAPI):
         pass
 
 class ScrollHandler(HTTPAPI):
-    def initialize(self):
-        super(HTTPAPI, self).initialize(self)
-        self.scroll = scroll.Scroll(self.notary.pyfs)
+    def get_scroll(self, scroll_id):
+        return scroll.Scroll(self.notary.pyfs, scroll_id)
 
 class ScrollReadHandler(ScrollHandler):
     def get(self, scroll_id):
+        scroll = self.get_scroll(scroll_id)
         limit = None
         try:
             start = int(self.get_argument('start'))
             limit = int(self.get_argument('limit'))
-            items = self.scroll.slice(start, limit)
+            items = scroll.slice(start, limit)
         except Exception as exc:
             print "No start provided"
             print exc
-            items = list(self.scroll)
+            items = list(scroll)
 
         self.write(items)
 
@@ -123,9 +124,12 @@ def loadNotary():
     pyfs = opener.opendir(settings.config['fs_path'])
     chissel_set_id = 'spam'
     notary_fingerprint = notary.Notary.generate(pyfs)
-    HTTPAPI.notary = notary.Notary(SubscribeHandler, pyfs, notary_fingerprint)
+    return notary.Notary(SubscribeHandler, pyfs, notary_fingerprint)
 
-    notaryAPI = web.Application([
+def notaryAPI(notary):
+    HTTPAPI.notary = notary
+
+    app = web.Application([
 
         (r'/chisel/scroll/(' + hash_regexp + ')/policy', ScrollPolicyHandler),
         (r'/chisel/scroll/(' + hash_regexp + ')', ScrollReadHandler),
@@ -137,4 +141,4 @@ def loadNotary():
         (r'/chisel/subscribe', SubscribeHandler),
         (r'/.*', HTTPAPI),
     ])
-    return notaryAPI
+    return app
