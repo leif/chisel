@@ -92,9 +92,6 @@ class LocalScroll(SignedScroll):
         return signed_update
 
 class RemoteScroll(SignedScroll):
-    def fetch_item(self, item_hash):
-        return defer.succeed('AAAA')
-
     def verify_update(self, signed_update):
         verify_key = self.get_verify_key(self.fingerprint)
 

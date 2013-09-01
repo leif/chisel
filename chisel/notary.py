@@ -8,6 +8,7 @@ class ChiselSet(object):
         self.scroll = LocalScroll(pyfs, chisel_set_id, fingerprint)
         self.pool = Pool(pyfs)
         self.remote_scrolls = []
+        self._pending_item_requests = {}
     
     def add_remote_scroll(self, remote_scroll):
         self.remote_scrolls.append(remote_scroll)
@@ -15,7 +16,7 @@ class ChiselSet(object):
     def __iter__(self):
         for item_hash in self.scroll:
             yield self.pool.get(item)
-
+    
     def add(self, item):
         item_hash = settings.HASH(item)
         self.pool.put(item)
@@ -34,11 +35,28 @@ class Notary(crypto.KeyStore):
         self._pyfs = pyfs
         self.publisher = publisher
         self.fingerprint = fingerprint
+        self.remote_pools = {}
 
         self.load_keys()
-   
+     
     def create_chisel_set(self, chisel_set_id):
         self.chisel_set = ChiselSet(self._pyfs, chisel_set_id, self.fingerprint)
+
+    def add_remote_pool(self, peer_id, pool):
+        self.remote_pools[peer_id] = pool
+
+    def fetch_item(self, item_hash, peer_id):
+        pool = self.remote_pools[peer_id]
+        if not item_hash in self._pending_item_requests:
+            d = pool.get(item_hash)
+            self._pending_item_requests[item_hash] = d
+
+        d = self._pending_item_requests[item_hash]
+        @d.addErrback
+        def err(failure):
+            failure.trap(e.PoolLookupFailed)
+            return self.fetch_item(item_hash, peer_id)
+        return d
 
     def add(self, item):
         item_hash = self.chisel_set.add(item)
@@ -61,14 +79,25 @@ class Notary(crypto.KeyStore):
     def invalid_update(self, scroll, update, exception):
         raise e.StreissandException
 
+    def failed_fetch(item_hash, notary_fingerprint):
+        print "Failed to fetch %s from %s" % (item_hash, notary_fingerprint)
+
     def receive_update(self, scroll, update):
         try:
             item_hash = scroll.verify_update(update)
             if not self.chisel_set.has(item_hash):
-                d = scroll.fetch_item(item_hash)
+                d = self.chisel_set.fetch_item(item_hash, scroll.fingerprint)
                 @d.addCallback
                 def cb(item):
                     self.add(item)
+
+                @d.addErrback
+                def err(item_hash, notary_fingerprint, retry=False):
+                    if retry:
+                        return self.chisel_set.fetch_item(item_hash,
+                                                          notary_fingerprint)
+                    self.failed_fetch(item_hash, notary_fingerprint)
+
         except Exception as exception:
             self.invalid_update(scroll, update, exception)
 
