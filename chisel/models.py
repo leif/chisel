@@ -4,7 +4,6 @@ ScrollFs - stores files by hash, maintains ordered log of writes
 """
 from chisel import settings
 from chisel import errors as e
-import hashlib
 
 class Pool(object):
     """
@@ -35,22 +34,23 @@ class Scroll(object):
     Ordered set of item hashes.
     """
     def __init__(self, pyfs, scroll_id):
-        self._pyfs = pyfs
-        self.id = scroll_id
-        self._data_set = set()
-        self._data_list = []
         self.policy = {
             'value-size': 20,
             'signed': True,
             'valid-keys': [],
             'go-hard': True,
         }
-
-    def save(self):
-        scroll_content = ""
-        for item_hash in self._data_list:
-            scroll_content += item_hash
-        self._pyfs.setcontents("%s.scroll" % self.id, scroll_content)
+        self._pyfs = pyfs
+        self.id = scroll_id
+        self._data_set = set()
+        self._data_list = []
+        self.state = scroll_id
+        # XXX this is a blocking call
+        self._fh = self._pyfs.open("%s.scroll" % scroll_id, 'a+')
+    
+    @property
+    def serial_number(self):
+        return len(self._data_list)
 
     def load(self):
         scroll_content = self._pyfs.getcontents("%s.scroll" % self.id)
@@ -80,8 +80,14 @@ class Scroll(object):
         """
         if item_hash not in self._data_set:
             assert self.policy['go-hard']
-            self._data_list.append(item_hash)
+
+            self._fh.write(item_hash)
+            self._fh.flush()
+
             self._data_set.add(item_hash)
+            self._data_list.append(item_hash)
+
+            self.state = settings.HASH(self.state + item_hash)
         else:
             raise e.ObjectAlreadyInPool
 

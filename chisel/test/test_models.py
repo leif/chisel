@@ -1,3 +1,4 @@
+import os
 import hashlib
 import random
 
@@ -24,6 +25,10 @@ def bytes_hash_int(i):
     return hashlib.sha1(str(i)).digest()
 
 class TestScroll(unittest.TestCase):
+    def setUp(self):
+        try: os.unlink(sha1_hexdigest + ".scroll")
+        except: pass
+
     def test_save_scroll(self):
         item_hash = twenty_bytes
         scroll_id = sha1_hexdigest
@@ -31,7 +36,6 @@ class TestScroll(unittest.TestCase):
         scroll = models.Scroll(pyfs, scroll_id)
         scroll.add(item_hash)
         self.assertTrue(scroll.has(item_hash))
-        scroll.save()
         contents = pyfs.getcontents(scroll_id + '.scroll')
         self.assertEqual(contents, item_hash)
 
@@ -61,7 +65,6 @@ class TestScroll(unittest.TestCase):
         for item_hash in items:
             self.assertTrue(scroll.has(item_hash))
 
-        scroll.save()
         contents = pyfs.getcontents(scroll_id + '.scroll')
         self.assertEqual(contents, ''.join(items))
 
