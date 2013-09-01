@@ -92,3 +92,20 @@ class TestPool(unittest.TestCase):
         hash_bytes = pool.put(my_data)
         self.assertEqual(pool.get(hash_bytes), my_data)
 
+class TestChiselSet(unittest.TestCase):
+    def test_add(self):
+        my_data = "B"*20
+        pyfs = opener.opendir(settings.config['fs_path'])
+        scroll_id = sha1_hexdigest
+        
+        scroll = models.Scroll(pyfs, scroll_id)
+        pool = models.Pool(pyfs)
+        
+        chisel_set = models.ChiselSet(pool, scroll)
+        hash_bytes = chisel_set.add(my_data)
+
+        self.assertEqual(pool.get(hash_bytes), my_data)
+        self.assertTrue(scroll.has(hash_bytes))
+
+        self.assertTrue(chisel_set.has(my_data))
+

@@ -101,7 +101,10 @@ class ChiselSet(object):
             yield self.pool.get(item)
 
     def add(self, item):
-        pass
+        item_hash = settings.HASH(item)
+        self.pool.put(item)
+        self.scroll.add(item_hash)
+        return item_hash
 
     def has(self, item):
         item_hash = settings.HASH(item)
