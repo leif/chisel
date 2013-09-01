@@ -14,9 +14,8 @@ def random_hash(length=40):
 def random_bytes(size=20):
     return ''.join(chr(random.randint(0, 255)) for i in range(size))
 
-hash_digits = '0123456789abcdef'
 twenty_bytes = 'A'*20
-sha1_hexdigest = ''.join(hash_digits[i % 16] for i in range(40))
+sha1_hexdigest = ''.join("%x" % i%16) for i in range(40))
 
 def hex_hash_int(i):
     return hashlib.sha1(str(i)).hexdigest()
