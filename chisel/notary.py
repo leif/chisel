@@ -23,7 +23,6 @@ class ChiselSet(object):
         return item_hash
 
     def has(self, item_hash):
-        #item_hash = settings.HASH(item)
         return self.scroll.has(item_hash)
 
 class Notary(crypto.KeyStore):
@@ -68,7 +67,7 @@ class Notary(crypto.KeyStore):
             if not self.chisel_set.has(item_hash):
                 d = scroll.fetch_item(item_hash)
                 @d.addCallback
-                def cb(result):
+                def cb(item):
                     self.add(item)
         except Exception as exception:
             self.invalid_update(scroll, update, exception)
