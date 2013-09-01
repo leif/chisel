@@ -5,7 +5,7 @@ import random
 import unittest
 
 from chisel import settings
-from chisel import scroll
+from chisel import scroll, crypto
 from fs.opener import opener
 
 def random_hash(length=40):
@@ -82,3 +82,54 @@ class TestScroll(unittest.TestCase):
         self.assertEqual(four, bytes_hash_int(4))
         self.assertEqual(five, bytes_hash_int(5))
 
+    def test_sign_local_scroll(self):
+        pyfs = opener.opendir(settings.config['fs_path'])
+
+        signing_key = crypto.generate_signing_key()
+        scroll_id = sha1_hexdigest
+        s = scroll.LocalScroll(pyfs, 
+                               scroll_id, 
+                               signing_key.verify_key.encode(crypto.HexEncoder))
+        s.get_signing_key = lambda y: signing_key
+        
+        items = []
+        for i in range(10):
+            item_hash = bytes_hash_int(i)
+            s.add(item_hash)
+            items.append(item_hash)
+
+        update = s.state + item_hash
+        signed_update = s.sign_update(update)
+
+        four, five = s.slice(4, 2)
+        self.assertEqual(four, bytes_hash_int(4))
+        self.assertEqual(five, bytes_hash_int(5))
+
+        self.assertEqual(signing_key.verify_key.verify(signed_update), update)
+
+    def test_verify_remote_scroll(self):
+        pyfs = opener.opendir(settings.config['fs_path'])
+
+        signing_key = crypto.generate_signing_key()
+        scroll_id = sha1_hexdigest
+        s = scroll.RemoteScroll(pyfs, 
+                               scroll_id, 
+                               signing_key.verify_key.encode(crypto.HexEncoder))
+        s.get_verify_key = lambda y: signing_key.verify_key
+        
+        items = []
+        for i in range(10):
+            item_hash = bytes_hash_int(i)
+            s.add(item_hash)
+            items.append(item_hash)
+
+        four, five = s.slice(4, 2)
+        self.assertEqual(four, bytes_hash_int(4))
+        self.assertEqual(five, bytes_hash_int(5))
+
+        new_item_hash = bytes_hash_int(i)
+        new_state = settings.HASH(s.state + new_item_hash)
+        update = new_item_hash + new_state
+        signed_update = signing_key.sign(update)
+
+        self.assertEqual(s.verify_update(signed_update), update)

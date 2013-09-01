@@ -46,3 +46,10 @@ class TestNotary(unittest.TestCase):
         signed_message = n.signing_key.sign(my_message)
         verify_key = n.signing_key.verify_key
         self.assertEqual(verify_key.verify(signed_message), my_message)
+
+    def test_receive_update(self):
+        pass
+
+    def test_publish_update(self):
+        pass
+

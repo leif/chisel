@@ -20,8 +20,8 @@ class ChiselSet(object):
     def add(self, item):
         item_hash = settings.HASH(item)
         self.pool.put(item)
-        self.scroll.add(item_hash)
-        return item_hash
+        if self.scroll.add(item_hash):
+            return item_hash
 
     def has(self, item_hash):
         return self.scroll.has(item_hash)
@@ -55,12 +55,14 @@ class Notary(crypto.KeyStore):
         @d.addErrback
         def err(failure):
             failure.trap(e.PoolLookupFailed)
+            self.failed_fetch(item_hash, peer_id)
             return self.fetch_item(item_hash, peer_id)
         return d
 
     def add(self, item):
         item_hash = self.chisel_set.add(item)
-        self.publish_update(item_hash)
+        if item_hash:
+            self.publish_update(item_hash)
 
     @classmethod
     def generate(cls, pyfs):
@@ -79,7 +81,7 @@ class Notary(crypto.KeyStore):
     def invalid_update(self, scroll, update, exception):
         raise e.StreissandException
 
-    def failed_fetch(item_hash, notary_fingerprint):
+    def failed_fetch(self, item_hash, notary_fingerprint):
         print "Failed to fetch %s from %s" % (item_hash, notary_fingerprint)
 
     def receive_update(self, scroll, update):
@@ -90,13 +92,6 @@ class Notary(crypto.KeyStore):
                 @d.addCallback
                 def cb(item):
                     self.add(item)
-
-                @d.addErrback
-                def err(item_hash, notary_fingerprint, retry=False):
-                    if retry:
-                        return self.chisel_set.fetch_item(item_hash,
-                                                          notary_fingerprint)
-                    self.failed_fetch(item_hash, notary_fingerprint)
 
         except Exception as exception:
             self.invalid_update(scroll, update, exception)

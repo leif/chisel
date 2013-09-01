@@ -8,19 +8,19 @@ class Pool(object):
     def __init__(self, pyfs):
         self._pyfs = pyfs
 
-    def _get_dir(self, hash_bytes):
-        assert len(hash_bytes) == settings.HASH_LENGTH
-        hex_string = hash_bytes.encode('hex')
+    def _get_dir(self, item_hash):
+        assert len(item_hash) == settings.HASH_LENGTH
+        hex_string = item_hash.encode('hex')
         dir_path = "%s/%s" % (hex_string[0:2], hex_string[2:4])
         return self._pyfs.makeopendir(dir_path, recursive=True)
 
-    def put(self, data):
-        hash_bytes = settings.HASH(data)
-        self._get_dir(hash_bytes).setcontents(hash_bytes.encode('hex'), data)
-        return hash_bytes
+    def put(self, item):
+        item_hash = settings.HASH(item)
+        self._get_dir(item_hash).setcontents(item_hash.encode('hex'), item)
+        return item_hash
 
-    def get(self, hash_bytes):
-        return self._get_dir(hash_bytes).getcontents(hash_bytes.encode('hex'))
+    def get(self, item_hash):
+        return self._get_dir(item_hash).getcontents(item_hash.encode('hex'))
 
 class RemotePool(object):
     def __init__(self, peer_id):

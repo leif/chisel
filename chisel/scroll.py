@@ -73,6 +73,7 @@ class Scroll(object):
             self._data_list.append(item_hash)
 
             self.state = settings.HASH(self.state + item_hash)
+            return item_hash
 
 class SignedScroll(Scroll, crypto.KeyStore):
     def __init__(self, pyfs, scroll_id, fingerprint):
@@ -103,4 +104,4 @@ class RemoteScroll(SignedScroll):
         if state != next_state:
             raise e.InconsistentState
 
-        return settings.HASH(update)
+        return update
