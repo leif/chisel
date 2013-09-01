@@ -7,10 +7,10 @@ class ChiselSet(object):
     def __init__(self, pyfs, chisel_set_id, fingerprint):
         self.scroll = LocalScroll(pyfs, chisel_set_id, fingerprint)
         self.pool = Pool(pyfs)
-        self.remote_scrolls = []
+        self.peers = {}
         self._pending_item_requests = {}
     
-    def add_remote_scroll(self, remote_scroll):
+    def add_peer(self, peer_id):
         self.remote_scrolls.append(remote_scroll)
 
     def __iter__(self):
@@ -19,9 +19,11 @@ class ChiselSet(object):
     
     def add(self, item):
         item_hash = settings.HASH(item)
-        self.pool.put(item)
+        if not self.pool.has(item_hash):
+            self.pool.put(item)
         if self.scroll.add(item_hash):
             return item_hash
+        return self.scroll.add(item_hash)
 
     def has(self, item_hash):
         return self.scroll.has(item_hash)
@@ -40,7 +42,7 @@ class Notary(crypto.KeyStore):
         self.load_keys()
      
     def create_chisel_set(self, chisel_set_id):
-        self.chisel_set = ChiselSet(self._pyfs, chisel_set_id, self.fingerprint)
+        self.chisel_set[chisel_set_id] = ChiselSet(self._pyfs, chisel_set_id, self.fingerprint)
 
     def add_remote_pool(self, peer_id, pool):
         self.remote_pools[peer_id] = pool
@@ -88,7 +90,7 @@ class Notary(crypto.KeyStore):
         try:
             item_hash = scroll.verify_update(update)
             if not self.chisel_set.has(item_hash):
-                d = self.chisel_set.fetch_item(item_hash, scroll.fingerprint)
+                d = self.fetch_item(item_hash, scroll.fingerprint)
                 @d.addCallback
                 def cb(item):
                     self.add(item)

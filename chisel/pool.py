@@ -22,6 +22,9 @@ class Pool(object):
     def get(self, item_hash):
         return self._get_dir(item_hash).getcontents(item_hash.encode('hex'))
 
+    def has(self, hash_bytes):
+        return self._get_dir(hash_bytes).isfile(hash_bytes.encode('hex'))
+
 class RemotePool(object):
     def __init__(self, peer_id):
         self.peer_id = peer_id
