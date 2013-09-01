@@ -72,7 +72,7 @@ class Scroll(object):
 
             self.state = settings.HASH(self.state + item_hash)
 
-class CryptoScroll(Scroll, crypto.KeyStore):
+class SignedScroll(Scroll, crypto.KeyStore):
     def __init__(self, pyfs, scroll_id, fingerprint):
         self.fingerprint = fingerprint
         super(CryptoScroll, self).__init__(pyfs, scroll_id)
@@ -80,16 +80,16 @@ class CryptoScroll(Scroll, crypto.KeyStore):
     @property
     def scroll_path(self):
         self._pyfs.makeopendir(self.fingerprint, recursive=True)
-        return "%s/%s.scroll" % (self.fingerprint, self.id)
+        return "%s/%s.scroll" % (self.id, self.fingerprint)
 
-class LocalScroll(CryptoScroll):
+class LocalScroll(SignedScroll):
     def sign_update(self, update):
         signing_key = self.get_signing_key(self.fingerprint)
 
         signed_update = signing_key.sign(update)
         return signed_update
 
-class RemoteScroll(CryptoScroll):
+class RemoteScroll(SignedScroll):
     def verify_update(self, signed_update):
         verify_key = self.get_verify_key(self.fingerprint)
 
