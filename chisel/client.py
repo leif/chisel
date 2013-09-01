@@ -8,7 +8,6 @@ class NotarySubscriber(object):
 
 @implementer(iweb.IBodyProducer)
 class StringProducer(object):
-
     def __init__(self, body):
         self.body = body
         self.length = len(body)
@@ -24,7 +23,7 @@ class StringProducer(object):
         pass
 
 class HTTPClient(object):
-    def __init__(self, socks_proxy=None):
+    def __init__(self, base_url="", socks_proxy=None):
         """
         Args:
             socks_proxy: if set will use the specified SOCKS5 proxy for
@@ -32,16 +31,18 @@ class HTTPClient(object):
 
         """
         self.agent = client.Agent(reactor)
+        self.base_url = base_url
         if socks_proxy:
             socks_host, socks_port = socks_proxy.split(':')
             from txsocksx.http import SOCKS5Agent
             torEndpoint = TCP4ClientEndpoint(reactor, socks_host, int(socks_port))
             self.agent = SOCKS5Agent(reactor, proxyEndpoint=torEndpoint)
-    
+
     def request(self, method, url, data=None):
         bodyProducer = None
         if data:
             bodyProducer = StringProducer(data)
+        url = self.base_url + url
         d = self.agent.request(method, url, bodyProducer=bodyProducer)
         d.addCallback(client.readBody)
         return d
@@ -52,12 +53,11 @@ class HTTPClient(object):
     def post(self, url, data=None):
         return self.request('POST', url, data)
 
-     def put(self, url, data=None):
+    def put(self, url, data=None):
         return self.request('PUT', url, data)
-    
+
 class PoolClient(HTTPClient):
     pass
 
 class ScrollClient(HTTPClient):
     pass
-

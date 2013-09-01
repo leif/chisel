@@ -4,6 +4,7 @@ from cyclone import web, websocket, escape
 
 from fs.opener import opener
 
+from chisel import errors as e
 from chisel import log, settings
 from chisel import scroll, notary
 
@@ -29,10 +30,19 @@ class HTTPAPI(web.RequestHandler):
     def write_error(self, status_code, exception=None, **kw):
         self.set_status(status_code)
         error_message = 'generic-error'
-        if exception.log_message:
-            error_message = exception.log_message
+        if exception.error_message:
+            error_message = exception.error_message
         if exception:
             self.write({'error': error_message})
+
+    def get(self):
+        raise e.ResourceNotFound
+    def post(self):
+        raise e.ResourceNotFound
+    def put(self):
+        raise e.ResourceNotFound
+    def head(self):
+        raise e.ResourceNotFound
 
 class SubscribeHandler(websocket.WebSocketHandler):
     def publish_update(self, update):
