@@ -32,7 +32,7 @@ venv=$(pwd)
 echo "export LD_LIBRARY_PATH=$venv" >> ./bin/activate
 . ./bin/activate
 mkdir src && cd src
-tgz_url=https://download.libsodium.org/libsodium/releases/
+tgz_url=https://download.libsodium.org/libsodium/releases/libsodium-0.4.2.tar.gz
 hash=1a7901cdd127471724e854a8eb478247dc0ca67be549345c75fc6f2d4e05ed39
 tgz=$(basename $tgz_url)
 curl $tgz_url > $tgz
