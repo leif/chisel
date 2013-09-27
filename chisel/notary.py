@@ -8,7 +8,6 @@ class ChiselSet(object):
         self.id = chisel_set_id
         self.pyfs = pyfs
         self.fingerprint = fingerprint
-
         self.peers = {}
         self._pending_item_requests = {}
 
@@ -28,7 +27,6 @@ class ChiselSet(object):
             self.pool.put(item)
         if self.scroll.add(item_hash):
             return item_hash
-        return self.scroll.add(item_hash)
 
     def has(self, item_hash):
         return self.scroll.has(item_hash)
@@ -44,9 +42,9 @@ class Notary(crypto.KeyStore):
         self.fingerprint = fingerprint
         self.remote_pools = {}
         self.chisel_sets = {}
+        self.verify_key = self.get_verify_key(self.fingerprint)
+        self.signing_key = self.get_signing_key(self.fingerprint)
 
-        self.load_keys()
-     
     def create_chisel_set(self, chisel_set_id):
         chisel_set = ChiselSet(self.pyfs, chisel_set_id, self.fingerprint)
         self.chisel_sets[chisel_set_id] = chisel_set
@@ -73,7 +71,6 @@ class Notary(crypto.KeyStore):
         item_hash = self.chisel_sets[chisel_set_id].add(item)
         if item_hash:
             self.publish_update(chisel_set_id, item_hash)
-        return item_hash
 
     @classmethod
     def generate(cls, pyfs):
@@ -84,10 +81,6 @@ class Notary(crypto.KeyStore):
         pyfs.setcontents(cls.vkey % key_fingerprint,
                          signing_key.verify_key.encode(crypto.RawEncoder))
         return key_fingerprint
-
-    def load_keys(self):
-        self.verify_key = self.get_verify_key(self.fingerprint)
-        self.signing_key = self.get_signing_key(self.fingerprint)
 
     def invalid_update(self, scroll, update, exception):
         raise e.StreissandException

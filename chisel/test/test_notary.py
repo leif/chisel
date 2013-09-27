@@ -8,6 +8,8 @@ from chisel import settings
 from chisel import notary, pool, scroll
 from fs.opener import opener
 
+HASH = settings.HASH
+
 twenty_bytes = 'A'*20
 sha1_hexdigest = ''.join("%x" % (i%16) for i in range(40))
 
@@ -22,12 +24,10 @@ class TestChiselSet(unittest.TestCase):
         fingerprint = notary.Notary.generate(pyfs)
         
         chisel_set = notary.ChiselSet(pyfs, chissel_set_id, fingerprint)
-        hash_bytes = chisel_set.add(my_data)
-
-        self.assertEqual(chisel_set.pool.get(hash_bytes), my_data)
-        self.assertTrue(chisel_set.scroll.has(hash_bytes))
-
-        self.assertTrue(chisel_set.has(hash_bytes))
+        self.assertTrue( chisel_set.add(my_data)) # added
+        self.assertFalse(chisel_set.add(my_data)) # this time it was already there
+        self.assertTrue(chisel_set.scroll.has(HASH(my_data)))
+        self.assertTrue(chisel_set.has(HASH(my_data)))
 
 class TestNotary(unittest.TestCase):
     def test_generate(self):

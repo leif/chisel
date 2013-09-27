@@ -37,8 +37,8 @@ hash=1a7901cdd127471724e854a8eb478247dc0ca67be549345c75fc6f2d4e05ed39
 tgz=$(basename $tgz_url)
 curl $tgz_url > $tgz
 [ "`sha256sum $tgz`" == "$h  $tgz" ] &&
-tar xf libsodium-win32-0.4.2.tar.gz &&
-cd libsodium-win32-0.4.2
+tar xf libsodium-0.4.2.tar.gz &&
+cd libsodium-0.4.2
 && ./configure --prefix=$venv && make && make install && cd ..
 git clone https://github.com/leif/chisel && cd chisel
 pip install requirements.txt

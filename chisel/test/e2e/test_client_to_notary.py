@@ -17,10 +17,10 @@ class TestClientToNotary(e2e.End2EndTestCase):
         chisel_set_id = 'ham'
         my_data = 'spam'*20
         self.notary.create_chisel_set(chisel_set_id)
-        item_hash = self.notary.add(chisel_set_id, my_data)
+        self.notary.add(chisel_set_id, my_data)
 
         scrolls = yield self.client.jget('/chisel/scroll')
         scroll = scrolls[0] 
         self.assertEqual(scroll['state'], '7e5ca50fc95df01fe265fae4fa00d5e700e3c593')
         self.assertEqual(scroll['peer_id'], self.notary.fingerprint)
-        self.assertEqual(scroll['id'], chisel_set_id) 
+        self.assertEqual(scroll['id'], chisel_set_id)

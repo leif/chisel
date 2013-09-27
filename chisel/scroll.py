@@ -26,7 +26,8 @@ class Scroll(object):
         self._data_set = set()
         self._data_list = []
         self.state = scroll_id
-        # XXX this is a blocking call
+        if self.pyfs.isfile( self.scroll_path):
+            self._load()
         self._fh = self.pyfs.open(self.scroll_path, 'a+')
 
     @property 
@@ -37,14 +38,13 @@ class Scroll(object):
     def serial_number(self):
         return len(self._data_list)
 
-    def load(self):
+    def _load(self):
         scroll_content = self.pyfs.getcontents("%s.scroll" % self.id)
         value_size = self.policy['value-size']
         assert len(scroll_content) % value_size == 0
         for i in range(len(scroll_content)/value_size):
             item_hash = scroll_content[value_size*i:value_size*(i+1)]
-            self._data_set.add(item_hash)
-            self._data_list.append(item_hash)
+            self._add(item_hash)
 
     def __iter__(self):
         for item_hash in self._data_list:
@@ -59,21 +59,23 @@ class Scroll(object):
     def has(self, item_hash):
         return item_hash in self._data_set
     
+    def _write(self, item_hash):
+        self._fh.write(item_hash)
+        self._fh.flush()
+
+    def _add(self, item_hash):
+        self._data_set.add(item_hash)
+        self._data_list.append(item_hash)
+        self.state = settings.HASH(self.state + item_hash)
+
     def add(self, item_hash):
         """
         Adds an entry to the scroll if it isn't already present.
         """
         if item_hash not in self._data_set:
-            assert self.policy['go-hard']
-
-            self._fh.write(item_hash)
-            self._fh.flush()
-
-            self._data_set.add(item_hash)
-            self._data_list.append(item_hash)
-
-            self.state = settings.HASH(self.state + item_hash)
-            return item_hash
+            self._write(item_hash)
+            self._add(item_hash)
+            return True
 
 class SignedScroll(Scroll, crypto.KeyStore):
     def __init__(self, pyfs, scroll_id, fingerprint):
