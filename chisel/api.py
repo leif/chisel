@@ -85,16 +85,6 @@ class ScrollListHandler(ScrollHandler):
     def get(self):
         scroll_list = []
         for cs_id, chisel_set in self.notary.chisel_sets.items():
-            for peer_id, remote_scroll in chisel_set.peers.items():
-                scroll_list.append({
-                    'id': remote_scroll.scroll_id,
-                    'peer_id': peer_id,
-                    'state': remote_scroll.state.encode('hex'),
-                    'policy': remote_scroll.policy,
-                    # XXX should this flag be present or is it implicit in the peer_id?
-                    'local': False
-                })
-
             scroll_list.append({
                 'id': chisel_set.scroll.scroll_id,
                 'peer_id': self.notary.fingerprint,

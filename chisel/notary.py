@@ -4,22 +4,21 @@ from chisel.pool import Pool
 from chisel import errors as e
 
 class ChiselSet(object):
+    """
+    A ChiselSet combines a Scroll and a Pool, and a list of Notaries.
+    """
     def __init__(self, pyfs, chisel_set_id, fingerprint):
         self.id = chisel_set_id
         self.pyfs = pyfs
         self.fingerprint = fingerprint
-        self.peers = {}
         self._pending_item_requests = {}
 
         self.scroll = LocalScroll(pyfs, chisel_set_id, fingerprint)
         self.pool = Pool(pyfs)
     
-    def add_peer(self, peer_id):
-        self.peers[peer_id] = RemoteScroll(self.pyfs, self.scroll_id, peer_id)
-
     def __iter__(self):
         for item_hash in self.scroll:
-            yield self.pool.get(item)
+            yield self.pool.get(item_hash)
     
     def add(self, item):
         item_hash = settings.HASH(item)
@@ -33,8 +32,10 @@ class ChiselSet(object):
 
 class Notary(crypto.KeyStore):
     """
-    A notary maintains one or more scrolls, keeping them up-to-date with
-    corresponding scrolls maintained by other notaries.
+    A notary maintains one or more chisel sets, keeping them up-to-date with
+    other notaries. A notary is identified by its public key.
+
+    Note: we should get rid of "fingerprint"; it is actually the whole pubkey
     """
     def __init__(self, publisher, pyfs, fingerprint):
         self.pyfs = pyfs
