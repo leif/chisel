@@ -15,7 +15,7 @@ class ChiselSet(object):
         self.pool = Pool(pyfs)
     
     def add_peer(self, peer_id):
-        self.peers[peer_id] = RemoteScroll(self.pyfs, self.id, peer_id)
+        self.peers[peer_id] = RemoteScroll(self.pyfs, self.scroll_id, peer_id)
 
     def __iter__(self):
         for item_hash in self.scroll:

@@ -12,67 +12,59 @@ class ScrollUpdate(object):
 
 class Scroll(object):
     """
-    Ordered set of item hashes.
+    Persistent ordered set of fixed-size values.
     """
-    def __init__(self, pyfs, scroll_id):
-        self.policy = {
-            'value-size': 20,
-            'signed': True,
-            'valid-keys': [],
-            'go-hard': True,
-        }
+    def __init__(self, pyfs, scroll_id, value_size=20):
         self.pyfs = pyfs
-        self.id = scroll_id
-        self._data_set = set()
-        self._data_list = []
-        self.state = scroll_id
-        if self.pyfs.isfile( self.scroll_path):
-            self._load()
+        self.scroll_id = scroll_id
+        self.state = settings.HASH( scroll_id )
+        self.policy={}
+        self._value_size = value_size
+        self._value_set = set()
+        self._value_list = []
         self._fh = self.pyfs.open(self.scroll_path, 'a+')
+        while True:
+            value = self._fh.read( value_size )
+            if value == '':
+                break
+            assert len(value) == value_size, "bad scroll: short record"
+            self._add(value)
 
     @property 
     def scroll_path(self):
-        return "%s.scroll" % self.id
+        return "%s.scroll" % self.scroll_id
 
     @property
     def serial_number(self):
-        return len(self._data_list)
-
-    def _load(self):
-        scroll_content = self.pyfs.getcontents("%s.scroll" % self.id)
-        value_size = self.policy['value-size']
-        assert len(scroll_content) % value_size == 0
-        for i in range(len(scroll_content)/value_size):
-            item_hash = scroll_content[value_size*i:value_size*(i+1)]
-            self._add(item_hash)
+        return len(self._value_list)
 
     def __iter__(self):
-        for item_hash in self._data_list:
+        for item_hash in self._value_list:
             yield item_hash
 
     def slice(self, start, limit=1):
         """
         Returns list of items from the scroll.
         """
-        return self._data_list[start:start+limit]
+        return self._value_list[start:start+limit]
 
     def has(self, item_hash):
-        return item_hash in self._data_set
+        return item_hash in self._value_set
     
     def _write(self, item_hash):
         self._fh.write(item_hash)
         self._fh.flush()
 
     def _add(self, item_hash):
-        self._data_set.add(item_hash)
-        self._data_list.append(item_hash)
+        self._value_set.add(item_hash)
+        self._value_list.append(item_hash)
         self.state = settings.HASH(self.state + item_hash)
 
     def add(self, item_hash):
         """
         Adds an entry to the scroll if it isn't already present.
         """
-        if item_hash not in self._data_set:
+        if item_hash not in self._value_set:
             self._write(item_hash)
             self._add(item_hash)
             return True
@@ -84,8 +76,8 @@ class SignedScroll(Scroll, crypto.KeyStore):
 
     @property
     def scroll_path(self):
-        self.pyfs.makeopendir(self.id, recursive=True)
-        return "%s/%s.scroll" % (self.id, self.fingerprint)
+        self.pyfs.makeopendir(self.scroll_id, recursive=True)
+        return "%s/%s.scroll" % (self.scroll_id, self.fingerprint)
 
 class LocalScroll(SignedScroll):
     def sign_update(self, update):

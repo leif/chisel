@@ -51,7 +51,7 @@ class TestScroll(unittest.TestCase):
         self.assertTrue(s.has(data2))
         self.assertFalse(s.has('1'))
         self.assertFalse(s.has(''))
-        expected_state = HASH( HASH( scroll_id + data1 ) + data2 )
+        expected_state = HASH( HASH( HASH( scroll_id ) + data1 ) + data2 )
         self.assertEqual(s.state, expected_state)
  
     def test_add_many(self):
