@@ -5,15 +5,14 @@ from cyclone import web, websocket, escape
 from fs.opener import opener
 
 from chisel import errors as e
-from chisel import scroll, notary, settings
+from chisel import scroll, notary, settings, log
 
 class HTTPAPI(web.RequestHandler):
     notary = None
 
     def initialize(self):
         if not self.notary:
-            pass
-            # log.warn("No notary is present.")
+            log.warn("No notary is present.")
 
     def write(self, chunk):
         """
