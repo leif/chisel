@@ -8,11 +8,9 @@ from chisel import errors as e
 from chisel import scroll, notary, settings, log
 
 class HTTPAPI(web.RequestHandler):
-    notary = None
 
-    def initialize(self):
-        if not self.notary:
-            log.warn("No notary is present.")
+    def initialize(self, notary):
+        self.notary = notary
 
     def write(self, chunk):
         """
@@ -44,6 +42,7 @@ class HTTPAPI(web.RequestHandler):
         raise e.ResourceNotFound
 
 class SubscribeHandler(websocket.WebSocketHandler):
+
     @classmethod
     def publish_update(cls, update):
         pass
@@ -116,18 +115,17 @@ def loadNotary():
     return notary.Notary(SubscribeHandler, pyfs, notary_fingerprint)
 
 def notaryAPI(notary):
-    HTTPAPI.notary = notary
 
     app = web.Application([
 
-        (r'/chisel/scroll/(' + hash_regexp + ')/policy', ScrollPolicyHandler),
-        (r'/chisel/scroll/(' + hash_regexp + ')', ScrollReadHandler),
-        (r'/chisel/scroll', ScrollListHandler),
+        (r'/chisel/scroll/(' + hash_regexp + ')/policy', ScrollPolicyHandler, dict(notary=notary) ),
+        (r'/chisel/scroll/(' + hash_regexp + ')',        ScrollReadHandler,   dict(notary=notary)),
+        (r'/chisel/scroll',                              ScrollListHandler,   dict(notary=notary)),
 
-        (r'/chisel/item/(' + hash_regexp + ')', ItemRWHandler),
-        (r'/chisel/item', ItemListHandler),
+        (r'/chisel/item/(' + hash_regexp + ')',          ItemRWHandler,       dict(notary=notary)),
+        (r'/chisel/item',                                ItemListHandler,     dict(notary=notary)),
  
-        (r'/chisel/subscribe', SubscribeHandler),
-        (r'/.*', HTTPAPI),
+        (r'/chisel/subscribe',                           SubscribeHandler,    dict(notary=notary)),
+        (r'/.*',                                         HTTPAPI,             dict(notary=notary)),
     ])
     return app
