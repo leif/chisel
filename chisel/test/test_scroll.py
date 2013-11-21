@@ -39,19 +39,24 @@ class TestScroll(unittest.TestCase):
         contents = pyfs.getcontents(scroll_id + '.scroll')
         self.assertEqual(contents, data1)
 
-    def test_load(self):
+    def test_load_artificial(self):
+        """
+        This test writes its own scroll to test scroll loading
+        """
         scroll_id = 'test_load'
-        pyfs = opener.opendir(settings.config['fs_path'])
         data1 = HASH( '2' )
         data2 = HASH( '3' )
+        expected_state = HASH( HASH( HASH( scroll_id ) + data1 ) + data2 )
+        pyfs = opener.opendir(settings.config['fs_path'])
         with open(scroll_id + '.scroll', 'w+') as f:
             f.write( data1 + data2 )
+        with open(scroll_id + '.state', 'w') as f:
+            f.write( expected_state )
         s = scroll.Scroll(pyfs, scroll_id)
         self.assertTrue(s.has(data1))
         self.assertTrue(s.has(data2))
         self.assertFalse(s.has('1'))
         self.assertFalse(s.has(''))
-        expected_state = HASH( HASH( HASH( scroll_id ) + data1 ) + data2 )
         self.assertEqual(s.state, expected_state)
  
     def test_add_many(self):

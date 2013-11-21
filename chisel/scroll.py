@@ -22,10 +22,13 @@ class Scroll(object):
         self._value_size = value_size
         self._value_set = set()
         self._value_list = []
-        self._fh = self.pyfs.open(self.scroll_path, 'a+')
+        self._scroll_fh = self.pyfs.open(self.scroll_path, 'ab+')
+        self._state_fh = self.pyfs.open(self.state_path, 'ab')
         while True:
-            value = self._fh.read( value_size )
+            value = self._scroll_fh.read( value_size )
             if value == '':
+                if len(self._value_list) != 0:
+                    assert self.state == self.pyfs.getcontents(self.state_path), "inconsistent scroll state" + repr( (self._value_list, self.state, self.pyfs.getcontents(self.state_path)))
                 break
             assert len(value) == value_size, "bad scroll: short record"
             self._add(value)
@@ -33,6 +36,10 @@ class Scroll(object):
     @property 
     def scroll_path(self):
         return "%s.scroll" % self.scroll_id
+
+    @property 
+    def state_path(self):
+        return "%s.state" % self.scroll_id
 
     @property
     def serial_number(self):
@@ -52,8 +59,11 @@ class Scroll(object):
         return item_hash in self._value_set
     
     def _write(self, item_hash):
-        self._fh.write(item_hash)
-        self._fh.flush()
+        self._scroll_fh.write(item_hash)
+        self._scroll_fh.flush()
+        self._state_fh.seek(0)
+        self._state_fh.write(self.state)
+        self._state_fh.flush()
 
     def _add(self, item_hash):
         self._value_set.add(item_hash)
@@ -65,8 +75,8 @@ class Scroll(object):
         Adds an entry to the scroll if it isn't already present.
         """
         if item_hash not in self._value_set:
-            self._write(item_hash)
             self._add(item_hash)
+            self._write(item_hash)
             return True
 
 class SignedScroll(Scroll, crypto.KeyStore):
